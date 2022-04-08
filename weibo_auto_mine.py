@@ -1,9 +1,53 @@
 from selenium import webdriver
 import time
 import random
+import pymysql
 
 browser = webdriver.Edge()
 script="window.scrollTo(0,document.body.scrollHeight)"
+
+# mysql数据库连接
+class MysqlDb():
+    def __init__(self, host, port, user, passwd, db):
+        # 建立数据库连接
+        self.conn = pymysql.connect(
+            host=host,
+            port=port,
+            user=user,
+            passwd=passwd,
+            db=db
+        )
+        # 通过 cursor() 创建游标对象，并让查询结果以字典格式输出
+        self.cur = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
+    def __del__(self): # 对象资源被释放时触发，在对象即将被删除时的最后操作
+        # 关闭游标
+        self.cur.close()
+        # 关闭数据库连接
+        self.conn.close()
+    def select_db(self, sql):
+        # 使用 execute() 执行sql
+        self.cur.execute(sql)
+        # 使用 fetchall() 获取查询结果
+        data = self.cur.fetchall()
+        return data
+    def execute_db(self, sql):
+        try:
+            # 使用 execute() 执行sql
+            self.cur.execute(sql)
+            # 提交事务
+            self.conn.commit()
+        except Exception as e:
+            print("操作出现错误：{}".format(e))
+            # 回滚所有更改
+            self.conn.rollback()
+
+database = MysqlDb("127.0.0.1", 3306, "root", "timebusker", "weibo")
+
+# 日志插入
+def insertLog(auto_type,weibo_url):
+    timestr = time.strftime("%Y%m%d%H%M%S")
+    insert_sql = 'insert into weibo_auto(datetimestr, auto_type,weibo_url) values(\"'+ timestr +'\",\"'+ auto_type +'\",\"'+ weibo_url +'\")'
+    database.execute_db(insert_sql)
 
 # 小散爱涨停 UID
 uid = '6148104254'
@@ -29,13 +73,50 @@ def get_content():
         content='播报时间啦，' + time.strftime("%Y-%m-%d %H:%M:%S") + '[哈哈][哈哈]'
     return content
 
-# 给指定某条微博添加内容
-def add_comment(weibo_url):
+# 给指定微博评论
+def auto_comment(weibo_url):
     browser.get(weibo_url)
     browser.implicitly_wait(2)
     time.sleep(10)
-    # 刷新页面内容
-    for index in range(5):
+    content = get_content()
+    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").clear()
+    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").send_keys(content)
+    time.sleep(2)
+    button=browser.find_element_by_xpath('//span[text()="评论" and @class="woo-button-content"]/../..')
+    browser.execute_script("arguments[0].click()", button)
+    time.sleep(60)
+    insertLog('评论',weibo_url)
+
+# 给指定微博评论回复
+def auto_reply(weibo_url):
+    browser.get(weibo_url)
+    browser.implicitly_wait(2)
+    time.sleep(10)
+    # 翻滚页面
+    for index in range(2):
+        browser.execute_script(script)
+        time.sleep(10)
+    replys=browser.find_elements_by_css_selector("i[class='woo-font woo-font--comment']")
+    for reply in replys:
+        time.sleep(20)
+        browser.execute_script("arguments[0].click()", reply)
+        time.sleep(10)
+        content = get_content()
+        browser.find_element_by_css_selector("textarea[placeholder='发布你的回复']").clear()
+        browser.find_element_by_css_selector("textarea[placeholder='发布你的回复']").send_keys(content)
+        time.sleep(2)
+        button=browser.find_element_by_xpath('//span[text()="回复" and @class="woo-button-content"]/../..')
+        browser.execute_script("arguments[0].click()", button)
+        time.sleep(60)
+        insertLog('回复',weibo_url)
+
+# 给指定微博点赞
+def auto_liked(weibo_url):
+    browser.get(weibo_url)
+    browser.implicitly_wait(2)
+    time.sleep(10)
+    # 翻滚页面
+    for index in range(3):
         browser.execute_script(script)
         time.sleep(5)
     # 点赞
@@ -44,49 +125,34 @@ def add_comment(weibo_url):
         clazz = button.get_attribute("class")
         if clazz.find('IconList_likebox')>=0:
             browser.execute_script("arguments[0].click()", button)
-            time.sleep(2)
-    # 评论的评论
-    # browser.refresh()
-    time.sleep(10)
-    content_is=browser.find_elements_by_css_selector("i[class='woo-font woo-font--comment']")
-    for content_i in content_is:
-        browser.execute_script("arguments[0].click()", content_i)
-        time.sleep(2)
-        content = get_content()
-        browser.find_element_by_css_selector("textarea[placeholder='发布你的回复']").clear()
-        browser.find_element_by_css_selector("textarea[placeholder='发布你的回复']").send_keys(content)
-        time.sleep(2)
-        zpl_button=browser.find_element_by_xpath('//span[text()="回复" and @class="woo-button-content"]/../..')
-        browser.execute_script("arguments[0].click()", zpl_button)
-        time.sleep(120)
-    # 本博评论
-    browser.refresh()
-    time.sleep(60)
-    content = get_content()
-    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").clear()
-    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").send_keys(content)
-    time.sleep(2)
-    pl_button=browser.find_element_by_xpath('//span[text()="评论" and @class="woo-button-content"]/../..')
-    browser.execute_script("arguments[0].click()", pl_button)
-    time.sleep(60)
+            time.sleep(10)
+            insertLog('点赞',weibo_url)
+
 
 # 指定用户爬取最近20条微博
 def excetue(uid):
     # browser.execute_script("document.body.style.zoom='0.5'")
     browser.get('https://weibo.com/u/'+str(uid))
-    for k in range(3):
+    for k in range(5):
         browser.execute_script(script)
-        time.sleep(5)
+        time.sleep(10)
     hrefs = browser.find_elements_by_css_selector("a[href^='https://weibo.com/"+str(uid)+"/']")
     for href in hrefs:
         url=href.get_attribute('href')
         urls.append(url)
     time.sleep(5)
     for url in urls:
-        add_comment(url)
-        
-        print("=====================>",url)
+        auto_liked(url)
+        auto_reply(url)
+        auto_comment(url)
 
-excetue(uid)
-print("-----------------END_JOB-----------------")
-browser.quit()
+
+
+if __name__ == '__main__':
+    while True:
+        try:
+            excetue(uid)
+            print("-----------------END_JOB-----------------")
+            time.sleep(1800)
+        except Exception as e:
+            print("操作出现错误：{}".format(e))
