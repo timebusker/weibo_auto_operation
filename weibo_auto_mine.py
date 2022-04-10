@@ -78,24 +78,22 @@ def auto_comment(weibo_url):
     browser.get(weibo_url)
     browser.implicitly_wait(2)
     time.sleep(10)
-    content = get_content()
-    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").clear()
-    browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").send_keys(content)
-    time.sleep(2)
-    button=browser.find_element_by_xpath('//span[text()="评论" and @class="woo-button-content"]/../..')
-    browser.execute_script("arguments[0].click()", button)
-    time.sleep(60)
-    insertLog('评论',weibo_url)
+    for cnt in range(10):
+        content = get_content()
+        browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").clear()
+        browser.find_element_by_css_selector("textarea[placeholder='发布你的评论']").send_keys(content)
+        time.sleep(2)
+        button=browser.find_element_by_xpath('//span[text()="评论" and @class="woo-button-content"]/../..')
+        browser.execute_script("arguments[0].click()", button)
+        time.sleep(120)
+        insertLog('评论',weibo_url)
 
 # 给指定微博评论回复
 def auto_reply(weibo_url):
     browser.get(weibo_url)
     browser.implicitly_wait(2)
     time.sleep(10)
-    # 翻滚页面
-    for index in range(2):
-        browser.execute_script(script)
-        time.sleep(10)
+    # 回复
     replys=browser.find_elements_by_css_selector("i[class='woo-font woo-font--comment']")
     for reply in replys:
         time.sleep(20)
@@ -115,10 +113,6 @@ def auto_liked(weibo_url):
     browser.get(weibo_url)
     browser.implicitly_wait(2)
     time.sleep(10)
-    # 翻滚页面
-    for index in range(3):
-        browser.execute_script(script)
-        time.sleep(5)
     # 点赞
     buttons = browser.find_elements_by_xpath('//span[@class="woo-like-count"]/..')
     for button in buttons:
@@ -131,9 +125,9 @@ def auto_liked(weibo_url):
 
 # 指定用户爬取最近20条微博
 def excetue(uid):
-    # browser.execute_script("document.body.style.zoom='0.5'")
+    # browser.execute_script("document.body.style.zoom='0.75'")
     browser.get('https://weibo.com/u/'+str(uid))
-    for k in range(5):
+    for k in range(3):
         browser.execute_script(script)
         time.sleep(10)
     hrefs = browser.find_elements_by_css_selector("a[href^='https://weibo.com/"+str(uid)+"/']")
