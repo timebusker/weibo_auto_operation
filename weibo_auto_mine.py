@@ -127,7 +127,7 @@ def auto_liked(weibo_url):
 def excetue(uid):
     # browser.execute_script("document.body.style.zoom='0.75'")
     browser.get('https://weibo.com/u/'+str(uid))
-    for k in range(3):
+    for k in range(5):
         browser.execute_script(script)
         time.sleep(10)
     hrefs = browser.find_elements_by_css_selector("a[href^='https://weibo.com/"+str(uid)+"/']")
