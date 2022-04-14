@@ -6,6 +6,7 @@ import pymysql
 browser = webdriver.Edge()
 script="window.scrollTo(0,document.body.scrollHeight)"
 
+# select count(*) from weibo_auto where auto_type='评论' limit 10;
 # mysql数据库连接
 class MysqlDb():
     def __init__(self, host, port, user, passwd, db):
